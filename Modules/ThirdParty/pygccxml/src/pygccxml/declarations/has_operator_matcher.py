@@ -24,12 +24,12 @@ def has_public_binary_operator(type_, operator_symbol):
     if operators:
         return True
 
-    declarated = cpptypes.declarated_t(type_)
-    const = cpptypes.const_t(declarated)
-    reference = cpptypes.reference_t(const)
+    t = cpptypes.declarated_t(type_)
+    t = cpptypes.const_t(t)
+    t = cpptypes.reference_t(t)
     operators = type_.top_parent.operators(
         function=lambda decl: not decl.is_artificial,
-        arg_types=[reference, None],
+        arg_types=[t, None],
         symbol=operator_symbol,
         allow_empty=True,
         recursive=True)
@@ -49,11 +49,11 @@ def has_public_binary_operator(type_, operator_symbol):
     return False
 
 
-def has_public_equal(decl_type):
+def has_public_equal(type):
     """returns True, if class has public operator==, otherwise False"""
-    return has_public_binary_operator(decl_type, '==')
+    return has_public_binary_operator(type, '==')
 
 
-def has_public_less(decl_type):
+def has_public_less(type):
     """returns True, if class has public operator<, otherwise False"""
-    return has_public_binary_operator(decl_type, '<')
+    return has_public_binary_operator(type, '<')

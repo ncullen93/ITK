@@ -20,8 +20,6 @@
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkLogicTestSupport.h"
 
-namespace
-{
 // A bogus class for testing purposes.
 class Bogus
 {
@@ -40,8 +38,6 @@ public:
   Bogus() {}
   virtual ~Bogus() {}
 };
-}
-
 int itkEqualTest(int, char* [] )
 {
 

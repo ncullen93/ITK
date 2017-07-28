@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
@@ -7,6 +7,8 @@
 Defines classes that will keep results of different calculations.
 
 """
+
+from .. import utils
 
 
 class declaration_algs_cache_t(object):
@@ -27,7 +29,6 @@ class declaration_algs_cache_t(object):
         self._normalized_partial_name = None
         self._normalized_full_name_true = None
         self._normalized_full_name_false = None
-        self._container_traits = None
 
     def disable(self):
         self._enabled = False
@@ -48,16 +49,6 @@ class declaration_algs_cache_t(object):
         if not self.enabled:
             fname = None
         self._full_name = fname
-
-    @property
-    def container_traits(self):
-        return self._container_traits
-
-    @container_traits.setter
-    def container_traits(self, container_traits):
-        if not self.enabled:
-            container_traits = None
-        self._container_traits = container_traits
 
     @property
     def full_partial_name(self):
@@ -81,13 +72,19 @@ class declaration_algs_cache_t(object):
 
     @property
     def demangled_name(self):
-        return self._demangled_name
+        if "GCC" in utils.xml_generator:
+            return self._demangled_name
+        elif "CastXML" in utils.xml_generator:
+            raise Exception("Demangled name is not available with CastXML.")
 
     @demangled_name.setter
     def demangled_name(self, demangled_name):
         if not self.enabled:
             demangled_name = None
-        self._demangled_name = demangled_name
+        if "GCC" in utils.xml_generator:
+            self._demangled_name = demangled_name
+        elif "CastXML" in utils.xml_generator:
+            raise Exception("Demangled name is not available with CastXML.")
 
     @property
     def declaration_path(self):
@@ -185,7 +182,8 @@ class declaration_algs_cache_t(object):
         self.full_name = None
         self.full_partial_name = None
         self.access_type = None
-        self.demangled_name = None
+        if "GCCXML" in utils.xml_generator:
+            self.demangled_name = None
         self.declaration_path = None
         self.partial_declaration_path = None
         self.container_key_type = None
@@ -195,12 +193,12 @@ class declaration_algs_cache_t(object):
         self.normalized_partial_name = None
         self.normalized_full_name_true = None
         self.normalized_full_name_false = None
-        self.container_traits = None
 
     def reset_name_based(self):
         self.full_name = None
         self.full_partial_name = None
-        self.demangled_name = None
+        if "GCCXML" in utils.xml_generator:
+            self.demangled_name = None
         self.declaration_path = None
         self.partial_declaration_path = None
         self.container_key_type = None
@@ -210,7 +208,6 @@ class declaration_algs_cache_t(object):
         self.normalized_partial_name = None
         self.normalized_full_name_true = None
         self.normalized_full_name_false = None
-        self.container_traits = None
 
     def reset_access_type(self):
         self.access_type = None

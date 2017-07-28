@@ -106,7 +106,7 @@ void ThresholdMaximumConnectedComponentsImageFilter< TInputImage, TOutputImage >
 ::GenerateData(void)
 {
   //
-  //  Setup pointers to get input image and send info to output image
+  //  Setup pointers to get input image and send info to ouput image
   //
   typename Superclass::InputImageConstPointer inputPtr  = this->GetInput();
 
@@ -188,7 +188,7 @@ void ThresholdMaximumConnectedComponentsImageFilter< TInputImage, TOutputImage >
     } // end of the thresholdloop
 
   //
-  //  The two output values
+  //  The two ouput values
   //
   m_ThresholdValue = midpoint;
 

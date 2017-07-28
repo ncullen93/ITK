@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
@@ -9,10 +9,9 @@ base class.
 
 """
 
-import warnings
-
 from . import declaration_utils
 from . import algorithms_cache
+from .. import utils
 
 
 class declaration_t(object):
@@ -37,6 +36,8 @@ class declaration_t(object):
         self._attributes = attributes
         self._parent = None
         self._cache = algorithms_cache.declaration_algs_cache_t()
+        # Kept for retrocompatibility. Use utils.xml_generator instead
+        self._compiler = None
         self._partial_name = None
         self._decorated_name = None
 
@@ -77,7 +78,7 @@ class declaration_t(object):
             '_get__cmp__items not implemented for class ',
             self.__class__.__name__)
 
-        raise NotImplementedError()
+        raise NotImplemented()
 
     def _get__cmp__data(self):
         """
@@ -202,7 +203,7 @@ class declaration_t(object):
     @parent.setter
     def parent(self, new_parent):
         if new_parent:
-            assert isinstance(new_parent, declaration_t)
+            assert(isinstance(new_parent, declaration_t))
 
         self._parent = new_parent
 
@@ -214,13 +215,15 @@ class declaration_t(object):
            @type: declaration_t
 
         """
+
         parent = self.parent
-        while parent is not None:
-            if parent.parent is None:
-                return parent
+        me = self
+        while True:
+            if not parent:
+                return me
             else:
-                parent = parent.parent
-        return self
+                me = parent
+                parent = me.parent
 
     @property
     def location(self):
@@ -250,7 +253,7 @@ class declaration_t(object):
 
     @is_artificial.setter
     def is_artificial(self, new_artificial):
-        self._is_artificial = bool(new_artificial)
+        self._is_artificial = new_artificial
 
     def get_mangled_name(self):
         return self._mangled
@@ -269,7 +272,13 @@ class declaration_t(object):
 
         """
 
-        return self._mangled
+        if "GCC" in utils.xml_generator:
+            return self.get_mangled_name()
+        elif "CastXML" in utils.xml_generator:
+            raise Exception(
+                "Mangled name is not available with CastXML for all " +
+                "declarations: you can get the mangled name only " +
+                "for functions and variable declarations.")
 
     @mangled.setter
     def mangled(self, mangled):
@@ -283,7 +292,10 @@ class declaration_t(object):
            @type: str
 
         """
-        return self._demangled
+        if "GCC" in utils.xml_generator:
+            return self._demangled
+        elif "CastXML" in utils.xml_generator:
+            raise Exception("Demangled name is not available with CastXML.")
 
     @demangled.setter
     def demangled(self, demangled):
@@ -298,18 +310,11 @@ class declaration_t(object):
            @type: str
 
         """
-        warnings.warn(
-            "The decorated_name attribute is deprecated. See the changelog.",
-            DeprecationWarning)
-        # Deprecated since 1.9.0, will be removed in 2.0.0
+
         return self._decorated_name
 
     @decorated_name.setter
     def decorated_name(self, decorated_name):
-        warnings.warn(
-            "The decorated_name attribute is deprecated. See the changelog.",
-            DeprecationWarning)
-        # Deprecated since 1.9.0, will be removed in 2.0.0
         self._decorated_name = decorated_name
 
     @property
@@ -364,4 +369,6 @@ class declaration_t(object):
         Return list of all types and declarations the declaration depends on
 
         """
+
+        print(self)
         raise NotImplementedError()

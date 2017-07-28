@@ -1,16 +1,13 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
 import os
 import time
-
-import pygccxml.declarations
-
 from . import source_reader
 from . import declarations_cache
-from . import declarations_joiner
+import pygccxml.declarations
 from .. import utils
 
 
@@ -196,18 +193,6 @@ class project_reader_t(object):
             self.__decl_factory = pygccxml.declarations.decl_factory_t()
 
         self.logger = utils.loggers.cxx_parser
-        self.__xml_generator_from_xml_file = None
-
-    @property
-    def xml_generator_from_xml_file(self):
-        """
-        Configuration object containing information about the xml generator
-        read from the xml file.
-
-        Returns:
-            utils.xml_generators: configuration object
-        """
-        return self.__xml_generator_from_xml_file
 
     @staticmethod
     def get_os_file_names(files):
@@ -284,15 +269,16 @@ class project_reader_t(object):
             reader = source_reader.source_reader_t(
                 config,
                 self.__dcache,
-                self.__decl_factory)
+                self.__decl_factory,
+                join_decls=False)
 
             if content_type == \
                     file_configuration_t.CONTENT_TYPE.STANDARD_SOURCE_FILE:
-                self.logger.info('Parsing source file "%s" ... ', header)
+                self.logger.info('Parsing source file "%s" ... ' % header)
                 decls = reader.read_file(header)
             elif content_type == \
                     file_configuration_t.CONTENT_TYPE.GCCXML_GENERATED_FILE:
-                self.logger.info('Parsing xml file "%s" ... ', header)
+                self.logger.info('Parsing xml file "%s" ... ' % header)
                 decls = reader.read_xml_file(header)
             elif content_type == \
                     file_configuration_t.CONTENT_TYPE.CACHED_SOURCE_FILE:
@@ -302,24 +288,22 @@ class project_reader_t(object):
                     if dir_ and not os.path.exists(dir_):
                         os.makedirs(dir_)
                     self.logger.info(
-                        'Creating xml file "%s" from source file "%s" ... ',
-                        prj_file.cached_source_file, header)
+                        'Creating xml file "%s" from source file "%s" ... ' %
+                        (prj_file.cached_source_file, header))
                     reader.create_xml_file(header, prj_file.cached_source_file)
                 self.logger.info(
-                    'Parsing xml file "%s" ... ',
+                    'Parsing xml file "%s" ... ' %
                     prj_file.cached_source_file)
                 decls = reader.read_xml_file(prj_file.cached_source_file)
             else:
                 decls = reader.read_string(header)
-            self.__xml_generator_from_xml_file = \
-                reader.xml_generator_from_xml_file
             namespaces.append(decls)
 
         self.logger.debug("Flushing cache... ")
         start_time = time.clock()
         self.__dcache.flush()
         self.logger.debug(
-            "Cache has been flushed in %.1f secs",
+            "Cache has been flushed in %.1f secs" %
             (time.clock() - start_time))
         answer = []
         self.logger.debug("Joining namespaces ...")
@@ -328,13 +312,12 @@ class project_reader_t(object):
         self.logger.debug("Joining declarations ...")
         for ns in answer:
             if isinstance(ns, pygccxml.declarations.namespace_t):
-                declarations_joiner.join_declarations(ns)
+                reader.join_declarations(ns)
         leaved_classes = self._join_class_hierarchy(answer)
         types = self.__declarated_types(answer)
         self.logger.debug("Relinking declared types ...")
         self._relink_declarated_types(leaved_classes, types)
-        declarations_joiner.bind_aliases(
-            pygccxml.declarations.make_flatten(answer))
+        source_reader.bind_aliases(pygccxml.declarations.make_flatten(answer))
         return answer
 
     def __parse_all_at_once(self, files):
@@ -366,9 +349,7 @@ class project_reader_t(object):
             self.__config,
             None,
             self.__decl_factory)
-        decls = reader.read_string(content)
-        self.__xml_generator_from_xml_file = reader.xml_generator_from_xml_file
-        return decls
+        return reader.read_string(content)
 
     def read_xml(self, file_configuration):
         """parses C++ code, defined on the file_configurations and returns
@@ -383,11 +364,11 @@ class project_reader_t(object):
             self.__decl_factory)
         try:
             if fc.content_type == fc.CONTENT_TYPE.STANDARD_SOURCE_FILE:
-                self.logger.info('Parsing source file "%s" ... ', fc.data)
+                self.logger.info('Parsing source file "%s" ... ' % fc.data)
                 xml_file_path = reader.create_xml_file(fc.data)
             elif fc.content_type == \
                     file_configuration_t.CONTENT_TYPE.GCCXML_GENERATED_FILE:
-                self.logger.info('Parsing xml file "%s" ... ', fc.data)
+                self.logger.info('Parsing xml file "%s" ... ' % fc.data)
                 xml_file_path = fc.data
                 delete_xml_file = False
             elif fc.content_type == fc.CONTENT_TYPE.CACHED_SOURCE_FILE:
@@ -397,8 +378,8 @@ class project_reader_t(object):
                     if dir_ and not os.path.exists(dir_):
                         os.makedirs(dir_)
                     self.logger.info(
-                        'Creating xml file "%s" from source file "%s" ... ',
-                        fc.cached_source_file, fc.data)
+                        'Creating xml file "%s" from source file "%s" ... ' %
+                        (fc.cached_source_file, fc.data))
                     xml_file_path = reader.create_xml_file(
                         fc.data,
                         fc.cached_source_file)
@@ -406,11 +387,10 @@ class project_reader_t(object):
                     xml_file_path = fc.cached_source_file
             else:
                 xml_file_path = reader.create_xml_file_from_string(fc.data)
-            with open(xml_file_path, "r") as xml_file:
-                xml = xml_file.read()
+            xml_file = open(xml_file_path, 'r')
+            xml = xml_file.read()
+            xml_file.close()
             utils.remove_file_no_raise(xml_file_path, self.__config)
-            self.__xml_generator_from_xml_file = \
-                reader.xml_generator_from_xml_file
             return xml
         finally:
             if xml_file_path and delete_xml_file:
@@ -508,15 +488,17 @@ class project_reader_t(object):
                 del declarations[declarations_ids.index(id(class_))]
         return leaved_classes
 
-    @staticmethod
-    def _create_name_key(decl):
+    def _create_key2(self, decl):
+        return (
+            decl.location.as_tuple(),
+            tuple(pygccxml.declarations.declaration_path(decl)))
+
+    def _create_name_key(self, decl):
         # Not all declarations have a mangled name with castxml
         # we can only rely on the name
-        if decl.mangled is not None:
-            # gccxml
+        if "GCC" in utils.xml_generator:
             return decl.location.as_tuple(), decl.mangled
-        else:
-            # castxml
+        elif "CastXML" in utils.xml_generator:
             return decl.location.as_tuple(), decl.name
 
     def _relink_declarated_types(self, leaved_classes, declarated_types):
@@ -533,7 +515,7 @@ class project_reader_t(object):
             if isinstance(
                     decl_wrapper_type.declaration,
                     pygccxml.declarations.class_t):
-                key = self._create_key(decl_wrapper_type.declaration)
+                key = self._create_key2(decl_wrapper_type.declaration)
                 if key in leaved_classes:
                     decl_wrapper_type.declaration = leaved_classes[key]
                 else:
@@ -571,8 +553,7 @@ class project_reader_t(object):
                 if key in mangled_leaved_classes:
                     decl_wrapper_type.declaration = mangled_leaved_classes[key]
 
-    @staticmethod
-    def __declarated_types(namespaces):
+    def __declarated_types(self, namespaces):
         def get_from_type(cpptype):
             if not cpptype:
                 return []
@@ -598,7 +579,8 @@ class project_reader_t(object):
             if isinstance(decl, pygccxml.declarations.calldef_t):
                 types.extend(get_from_type(decl.function_type()))
             elif isinstance(
-                    decl, (pygccxml.declarations.typedef_t,
-                           pygccxml.declarations.variable_t)):
+                    decl,
+                    (pygccxml.declarations.typedef_t,
+                        pygccxml.declarations.variable_t)):
                 types.extend(get_from_type(decl.decl_type))
         return types

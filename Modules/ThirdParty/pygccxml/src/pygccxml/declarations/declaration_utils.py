@@ -1,29 +1,20 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
-import warnings
 
-
-def declaration_path(decl, with_defaults=None):
+def declaration_path(decl, with_defaults=True):
     """
     Returns a list of parent declarations names.
 
-    Args:
-        decl (declaration_t): declaration for which declaration path
-                              should be calculated.
+    :param decl: declaration for which declaration path should be calculated
+    :type decl: :class:`declaration_t`
 
-    Returns:
-        list[(str | basestring)]: list of names, where first item is the top
-                                  parent name and last item the inputted
-                                  declaration name.
+    :rtype: [names], where first item contains top parent name and last item
+             contains the `decl` name
+
     """
-
-    if with_defaults is not None:
-        # Deprecated since 1.9.0, will be removed in 2.0.0
-        warnings.warn(
-            "The with_defaults parameter is deprecated.\n", DeprecationWarning)
 
     if not decl:
         return []
@@ -51,14 +42,12 @@ def partial_declaration_path(decl):
     Returns a list of parent declarations names without template arguments that
     have default value.
 
-    Args:
-        decl (declaration_t): declaration for which the partial declaration
-                              path should be calculated.
+    :param decl: declaration for which declaration path should be calculated
+    :type decl: :class:`declaration_t`
 
-    Returns:
-        list[(str | basestring)]: list of names, where first item is the top
-                                  parent name and last item the inputted
-                                  declaration name.
+    :rtype: [names], where first item contains top parent name and last item
+             contains the `decl` name
+
     """
 
     # TODO:
@@ -100,13 +89,9 @@ def full_name(decl, with_defaults=True):
 
     If `decl` belongs to anonymous namespace or class, the function will return
     C++ illegal qualified name.
-
-    Args:
-        decl (declaration_t): declaration for which the full qualified name
-                              should be calculated.
-
-    Returns:
-        list[(str | basestring)]: full name of the declaration.
+    :param decl: :class:`declaration_t`
+    :type decl: :class:`declaration_t`
+    :rtype: full name of declarations.
 
     """
 
@@ -139,11 +124,10 @@ def get_named_parent(decl):
     """
     Returns a reference to a named parent declaration.
 
-    Args:
-        decl (declaration_t): the child declaration
+    :param decl: the child declaration
+    :type decl: :class:`declaration_t`
 
-    Returns:
-        declaration_t: the declaration or None if not found.
+    :rtype: reference to :class:`declaration_t` or None if not found
 
     """
 

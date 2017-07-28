@@ -69,9 +69,7 @@ INTERSECTION(_vector_dims_intersection "${ITK_WRAP_VECTOR_COMPONENTS}"
   "${ITK_WRAP_IMAGE_DIMS}")
 list(LENGTH ITK_WRAP_IMAGE_DIMS _num_dims)
 list(LENGTH _vector_dims_intersection _num_vector_dims_intersection)
-if(NOT _num_dims EQUAL _num_vector_dims_intersection)
-  message(FATAL_ERROR "ITK_WRAP_VECTOR_COMPONENTS must include ITK_WRAP_IMAGE_DIMS")
-endif()
+
 
 ###############################################################################
 # Create some variable which can be used later

@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 #
@@ -20,12 +20,10 @@ import os
 import os.path
 import gzip
 import hashlib
-import warnings
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
-
 from . import declarations_cache
 
 
@@ -57,8 +55,7 @@ class index_entry_t(object):
         self.filesigs, self.configsig = state
 
 
-# pylint: disable=W0622
-class directory_cache_t(declarations_cache.cache_base_t):
+class directory_cache_t (declarations_cache.cache_base_t):
 
     """cache class that stores its data as multiple files inside a directory.
 
@@ -71,9 +68,7 @@ class directory_cache_t(declarations_cache.cache_base_t):
     modified since the last run).
     """
 
-    def __init__(
-            self, dir="cache", directory="cache",
-            compression=False, sha1_sigs=True):
+    def __init__(self, dir="cache", compression=False, sha1_sigs=True):
         """
         :param dir: cache directory path, it is created, if it does not exist
 
@@ -85,19 +80,10 @@ class directory_cache_t(declarations_cache.cache_base_t):
                          the modification date
         """
 
-        if dir != "cache":
-            # Somebody explicitly set a different value for dir
-            warnings.warn(
-                "The dir argument is deprecated.\n" +
-                "Please use the directory argument instead.",
-                DeprecationWarning)
-            # Deprecated since 1.9.0, will be removed in 2.0.0
-            directory = dir
-
         declarations_cache.cache_base_t.__init__(self)
 
         # Cache directory
-        self.__dir = os.path.abspath(directory)
+        self.__dir = os.path.abspath(dir)
 
         # Flag that determines whether the cache files will be compressed
         self.__compression = compression
@@ -157,6 +143,7 @@ class directory_cache_t(declarations_cache.cache_base_t):
         dependent_files = {}
         for name in [source_file] + included_files:
             dependent_files[name] = 1
+        dependent_files = list(dependent_files.keys())
 
         key = self._create_cache_key(source_file)
         # Remove an existing entry (if there is one)
@@ -168,7 +155,7 @@ class directory_cache_t(declarations_cache.cache_base_t):
 
         # Create the sigs of all dependent files...
         filesigs = []
-        for filename in list(dependent_files.keys()):
+        for filename in dependent_files:
             id_, sig = self.__filename_rep.acquire_filename(filename)
             filesigs.append((id_, sig))
 
@@ -268,7 +255,6 @@ class directory_cache_t(declarations_cache.cache_base_t):
                 indexfilename,
                 (self.__index,
                  self.__filename_rep))
-
             self.__modified_flag = False
 
     def _read_file(self, filename):
@@ -329,7 +315,7 @@ class directory_cache_t(declarations_cache.cache_base_t):
             return
 
         # Release the referenced files...
-        for id_, _ in entry.filesigs:
+        for id_, sig in entry.filesigs:
             self.__filename_rep.release_filename(id_)
 
         # Remove the cache entry...
@@ -380,15 +366,15 @@ class directory_cache_t(declarations_cache.cache_base_t):
         :rtype: str
         """
         m = hashlib.sha1()
-        m.update(config.working_directory.encode("utf-8"))
+        m.update(config.working_directory)
         for p in config.include_paths:
-            m.update(p.encode("utf-8"))
+            m.update(p)
         for p in config.define_symbols:
-            m.update(p.encode("utf-8"))
+            m.update(p)
         for p in config.undefine_symbols:
-            m.update(p.encode("utf-8"))
+            m.update(p)
         for p in config.cflags:
-            m.update(p.encode("utf-8"))
+            m.update(p)
         return m.digest()
 
 
@@ -545,12 +531,13 @@ class filename_repository_t(object):
             if not os.path.exists(entry.filename):
                 return None
             try:
-                with open(entry.filename, "r") as f:
-                    data = f.read()
-                    return hashlib.sha1(data.encode("utf-8")).digest()
+                f = open(entry.filename)
             except IOError as e:
                 print("Cannot determine sha1 digest:", e)
                 return None
+            data = f.read()
+            f.close()
+            return hashlib.sha1(data).digest()
         else:
             # return file modification date...
             try:
@@ -558,9 +545,8 @@ class filename_repository_t(object):
             except OSError:
                 return None
 
-    def _dump(self):  # pragma: no cover
-        """
-        Dump contents for debugging/testing.
+    def _dump(self):
+        """Dump contents for debugging/testing.
         """
 
         print(70 * "-")

@@ -46,8 +46,8 @@ int itkExponentialDeformationFieldImageFilterTest(int, char* [] )
   // Declare the type of the Region
   typedef itk::ImageRegion<ImageDimension>   RegionType;
 
-  // Create the input image
-  ImageType::Pointer inputImage = ImageType::New();
+  // Create two images
+  ImageType::Pointer inputImage  = ImageType::New();
 
   // Define their size, and start index
   SizeType size;

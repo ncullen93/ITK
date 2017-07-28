@@ -98,7 +98,7 @@ class UInt128 {
     return high_bits_ == 0 && low_bits_ == 0;
   }
 
-  int BitAt(int position) const {
+  int BitAt(int position) {
     if (position >= 64) {
       return static_cast<int>(high_bits_ >> (position - 64)) & 1;
     } else {
@@ -259,8 +259,7 @@ static void FillFractionals(uint64_t fractionals, int exponent,
       fractionals -= static_cast<uint64_t>(digit) << point;
     }
     // If the first bit after the point is set we have to round up.
-    ASSERT(fractionals == 0 || point - 1 >= 0);
-    if ((fractionals != 0) && ((fractionals >> (point - 1)) & 1) == 1) {
+    if (((fractionals >> (point - 1)) & 1) == 1) {
       RoundUp(buffer, length, decimal_point);
     }
   } else {  // We need 128 bits.

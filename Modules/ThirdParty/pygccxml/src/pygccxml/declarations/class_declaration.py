@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
@@ -18,8 +18,7 @@ from . import declaration_utils
 from . import declaration
 from . import templates
 from . import cpptypes
-from . import byte_info
-from . import elaborated_info
+from .. import utils
 
 
 class ACCESS_TYPES(object):
@@ -62,10 +61,10 @@ class hierarchy_info_t(object):
         """creates class that contains partial information about class
         relationship"""
         if related_class:
-            assert isinstance(related_class, class_t)
+            assert(isinstance(related_class, class_t))
         self._related_class = related_class
         if access:
-            assert access in ACCESS_TYPES.ALL
+            assert(access in ACCESS_TYPES.ALL)
         self._access = access
         self._is_virtual = is_virtual
         self._declaration_path = None
@@ -100,7 +99,7 @@ class hierarchy_info_t(object):
     @related_class.setter
     def related_class(self, new_related_class):
         if new_related_class:
-            assert isinstance(new_related_class, class_t)
+            assert(isinstance(new_related_class, class_t))
         self._related_class = new_related_class
         self._declaration_path = None
         self._declaration_path_hash = None
@@ -111,7 +110,7 @@ class hierarchy_info_t(object):
 
     @access.setter
     def access(self, new_access):
-        assert new_access in ACCESS_TYPES.ALL
+        assert(new_access in ACCESS_TYPES.ALL)
         self._access = new_access
 
     # TODO: Why is there an access_type / access which are the same ?
@@ -158,6 +157,9 @@ class class_declaration_t(declaration.declaration_t):
         ( and not definition )"""
         declaration.declaration_t.__init__(self, name)
         self._aliases = []
+        self._container_traits = None  # Deprecated
+        self._container_traits_set = False  # Deprecated
+        self._container_traits_cache = None
 
     def _get__cmp__items(self):
         """implementation details"""
@@ -175,14 +177,30 @@ class class_declaration_t(declaration.declaration_t):
     def aliases(self, new_aliases):
         self._aliases = new_aliases
 
+    @property
+    def container_traits(self):
+        """reference to :class:`container_traits_impl_t` or None"""
+
+        # Deprecated since 1.8.0. Will be removed in 1.9.0
+        warnings.warn(
+            "The container_traits attribute is deprecated. \n" +
+            "Please use the find_container_traits function from the"
+            "declarations module instead.",
+            DeprecationWarning)
+
+        if self._container_traits_set is False:
+            from . import container_traits  # prevent cyclic dependencies
+            self._container_traits_set = True
+            self._container_traits = container_traits.find_container_traits(
+                self)
+            self._container_traits_cache = self._container_traits
+        return self._container_traits
+
     def _get_partial_name_impl(self):
         return get_partial_name(self.name)
 
 
-class class_t(
-        scopedef.scopedef_t,
-        byte_info.byte_info,
-        elaborated_info.elaborated_info):
+class class_t(scopedef.scopedef_t):
 
     """describes class definition"""
 
@@ -196,10 +214,8 @@ class class_t(
             is_abstract=False):
         """creates class that describes C++ class definition"""
         scopedef.scopedef_t.__init__(self, name)
-        byte_info.byte_info.__init__(self)
-        elaborated_info.elaborated_info.__init__(self, class_type)
         if class_type:
-            assert class_type in CLASS_TYPES.ALL
+            assert(class_type in CLASS_TYPES.ALL)
         self._class_type = class_type
         self._bases = []
         self._derived = []
@@ -208,13 +224,21 @@ class class_t(
         self._private_members = []
         self._protected_members = []
         self._aliases = []
+        self._byte_size = 0
+        self._byte_align = 0
+        self._container_traits_cache = None
+        self._container_traits = None  # Deprecated
+        self._container_traits_set = False  # Deprecated
         self._recursive_bases = None
         self._recursive_derived = None
         self._use_demangled_as_name = False
 
     @property
     def use_demangled_as_name(self):
-        return class_t.USE_DEMANGLED_AS_NAME
+        if "GCC" in utils.xml_generator:
+            return class_t.USE_DEMANGLED_AS_NAME
+        elif "CastXML" in utils.xml_generator:
+            return False
 
     @use_demangled_as_name.setter
     def use_demangled_as_name(self, use_demangled_as_name):
@@ -261,15 +285,15 @@ class class_t(
     def _get__cmp__scope_items(self):
         """implementation details"""
         return [
-            self.class_type,
-            [declaration_utils.declaration_path(base.related_class) for
-             base in self.bases].sort(),
-            [declaration_utils.declaration_path(derive.related_class) for
-             derive in self.derived].sort(),
-            self.is_abstract,
-            self.public_members.sort(),
-            self.private_members.sort(),
-            self.protected_members.sort()]
+                self.class_type,
+                [declaration_utils.declaration_path(base.related_class) for
+                 base in self.bases].sort(),
+                [declaration_utils.declaration_path(derive.related_class) for
+                 derive in self.derived].sort(),
+                self.is_abstract,
+                self.public_members.sort(),
+                self.private_members.sort(),
+                self.protected_members.sort()]
 
     def __eq__(self, other):
         if not scopedef.scopedef_t.__eq__(self, other):
@@ -302,7 +326,7 @@ class class_t(
     @class_type.setter
     def class_type(self, new_class_type):
         if new_class_type:
-            assert new_class_type in CLASS_TYPES.ALL
+            assert(new_class_type in CLASS_TYPES.ALL)
         self._class_type = new_class_type
 
     @property
@@ -395,6 +419,24 @@ class class_t(
     @aliases.setter
     def aliases(self, new_aliases):
         self._aliases = new_aliases
+
+    @property
+    def byte_size(self):
+        """Size of this class in bytes @type: int"""
+        return self._byte_size
+
+    @byte_size.setter
+    def byte_size(self, new_byte_size):
+        self._byte_size = new_byte_size
+
+    @property
+    def byte_align(self):
+        """Alignment of this class in bytes @type: int"""
+        return self._byte_align
+
+    @byte_align.setter
+    def byte_align(self, new_byte_align):
+        self._byte_align = new_byte_align
 
     def _get_declarations_impl(self):
         return self.get_members()
@@ -517,6 +559,49 @@ class class_t(
 
         return answer
 
+    @property
+    def container_traits(self):
+        """reference to :class:`container_traits_impl_t` or None"""
+
+        # Deprecated since 1.8.0. Will be removed in 1.9.0
+        warnings.warn(
+            "The container_traits attribute is deprecated. \n" +
+            "Please use the find_container_traits function from the"
+            "declarations module instead.",
+            DeprecationWarning)
+
+        if self._container_traits_set is False:
+            from . import container_traits  # prevent cyclic dependencies
+            self._container_traits_set = True
+            self._container_traits = container_traits.find_container_traits(
+                self)
+            self._container_traits_cache = self.container_traits
+        return self._container_traits
+
+    def find_copy_constructor(self):
+
+        # Deprecated since 1.8.0. Will be removed in 1.9.0
+        warnings.warn(
+            "The find_copy_constructor method is deprecated. \n" +
+            "Please use the find_copy_constructor function from the"
+            "declarations module instead.",
+            DeprecationWarning)
+
+        from . import type_traits_classes  # prevent cyclic dependencies
+        return type_traits_classes.find_copy_constructor(self)
+
+    def find_trivial_constructor(self):
+
+        # Deprecated since 1.8.0. Will be removed in 1.9.0
+        warnings.warn(
+            "The find_trivial_constructor method is deprecated. \n" +
+            "Please use the find_trivial_constructor function from the"
+            "declarations module instead.",
+            DeprecationWarning)
+
+        from . import type_traits_classes  # prevent cyclic dependencies
+        return type_traits_classes.find_trivial_constructor(self)
+
     def _get_partial_name_impl(self):
         from . import type_traits  # prevent cyclic dependencies
         if type_traits.is_std_string(self):
@@ -525,6 +610,34 @@ class class_t(
             return 'wstring'
         else:
             return get_partial_name(self.name)
+
+    def find_noncopyable_vars(self):
+        """returns list of all `noncopyable` variables"""
+
+        # Deprecated since 1.8.0. Will be removed in 1.9.0
+        warnings.warn(
+            "The find_noncopyable_vars method is deprecated. \n" +
+            "Please use the find_noncopyable_vars function from the"
+            "declarations module instead.",
+            DeprecationWarning)
+
+        from . import type_traits_classes  # prevent cyclic dependencies
+        type_traits_classes.find_noncopyable_vars(self)
+
+    @property
+    def has_vtable(self):
+        """True, if class has virtual table, False otherwise"""
+
+        # Deprecated since 1.8.0. Will be removed in 1.9.0
+        warnings.warn(
+            "The has_vtable argument is deprecated. \n" +
+            "Please use the has_vtable function from the declarations \n" +
+            "module instead.",
+            DeprecationWarning)
+
+        # prevent cyclic import
+        from . import type_traits_classes
+        return type_traits_classes.has_vtable(self)
 
     @property
     def top_class(self):
@@ -538,7 +651,6 @@ class class_t(
             curr = parent
             parent = parent.parent
         return curr
-
 
 class_types = (class_t, class_declaration_t)
 
@@ -572,30 +684,23 @@ class impl_details(object):
 
 class dependency_info_t(object):
 
-    def __init__(self, decl, depend_on_it, access_type=None, hint=None):
+    def __init__(self, declaration, depend_on_it, access_type=None, hint=None):
         object.__init__(self)
 
-        assert isinstance(depend_on_it, (class_t, cpptypes.type_t))
-        self._decl = decl
+        assert isinstance(
+            depend_on_it,
+            (class_t,
+             cpptypes.type_t))
+        self._declaration = declaration
         self._depend_on_it = depend_on_it
         self._access_type = access_type
         self._hint = hint
 
     @property
     def declaration(self):
-        return self._decl
-
-    @property
-    def decl(self):
-        """
-        Deprecated since 1.9.0. Will be removed in 2.0.0.
-
-        """
-        warnings.warn(
-            "The decl attribute is deprecated.\n" +
-            "Please use the declaration attribute instead.",
-            DeprecationWarning)
-        return self._decl
+        return self._declaration
+    # short name
+    decl = declaration
 
     @property
     def depend_on_it(self):

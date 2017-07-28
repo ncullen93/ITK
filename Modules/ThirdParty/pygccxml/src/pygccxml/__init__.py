@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
@@ -26,8 +26,6 @@ find all those declaration classes in the :mod:declarations sub-package.
 
 """
 
-import warnings
-
 from . import declarations
 from . import parser
 from . import utils
@@ -36,9 +34,10 @@ from . import utils
 # These are hidden by default since python 2.7.
 # pygccxml is a tool for developers, and these need
 # to know what is deprecated.
+import warnings
 warnings.simplefilter("always", DeprecationWarning)
 
 # TODO:
 # 1. Add "explicit" property for constructors
 
-__version__ = '1.9.0'
+__version__ = '1.8.0'

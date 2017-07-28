@@ -149,15 +149,6 @@ public:
   itkGetConstReferenceMacro(ComputePerimeter, bool);
   itkBooleanMacro(ComputePerimeter);
 
-  /**
-   * Set/Get whether the oriented bounding box should be
-   * computed or not. Default value is false because of potential
-   * memory consumption issues with sparse labels.
-   */
-  itkSetMacro(ComputeOrientedBoundingBox, bool);
-  itkGetConstReferenceMacro(ComputeOrientedBoundingBox, bool);
-  itkBooleanMacro(ComputeOrientedBoundingBox);
-
 protected:
   BinaryImageToShapeLabelMapFilter();
   ~BinaryImageToShapeLabelMapFilter() {}
@@ -182,7 +173,6 @@ private:
   InputImagePixelType  m_InputForegroundValue;
   bool                 m_ComputeFeretDiameter;
   bool                 m_ComputePerimeter;
-  bool                 m_ComputeOrientedBoundingBox;
 }; // end of class
 } // end namespace itk
 

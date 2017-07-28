@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
@@ -8,16 +8,17 @@ defines classes, that describe C++ types
 """
 
 from . import algorithms_cache
-from . import byte_info
 
 
-class type_t(byte_info.byte_info):
+class type_t(object):
 
     """base class for all types"""
 
     def __init__(self):
-        byte_info.byte_info.__init__(self)
+        object.__init__(self)
         self.cache = algorithms_cache.type_algs_cache_t()
+        self._byte_size = 0
+        self._byte_align = 0
 
     def __str__(self):
         res = self.decl_string
@@ -63,6 +64,24 @@ class type_t(byte_info.byte_info):
         """returns new instance of the type"""
         answer = self._clone_impl()
         return answer
+
+    @property
+    def byte_size(self):
+        """Size of this type in bytes @type: int"""
+        return self._byte_size
+
+    @byte_size.setter
+    def byte_size(self, new_byte_size):
+        self._byte_size = new_byte_size
+
+    @property
+    def byte_align(self):
+        """Alignment of this type in bytes @type: int"""
+        return self._byte_align
+
+    @byte_align.setter
+    def byte_align(self, new_byte_align):
+        self._byte_align = new_byte_align
 
 
 # There are cases when GCC-XML reports something like this
@@ -494,12 +513,6 @@ class compound_t(type_t):
     def base(self, new_base):
         self._base = new_base
 
-    def build_decl_string(self, with_defaults=True):
-        raise NotImplementedError()
-
-    def _clone_impl(self):
-        raise NotImplementedError()
-
 
 class volatile_t(compound_t):
 
@@ -561,12 +574,7 @@ class pointer_t(compound_t):
         compound_t.__init__(self, base)
 
     def build_decl_string(self, with_defaults=True):
-        decl_string = self.base.build_decl_string(with_defaults)
-        if isinstance(self.base, calldef_type_t):
-            # This is a function pointer. Do not add supplementary *
-            return decl_string
-        else:
-            return decl_string + " *"
+        return self.base.build_decl_string(with_defaults) + ' *'
 
     def _clone_impl(self):
         return pointer_t(self.base.clone())
@@ -584,24 +592,6 @@ class reference_t(compound_t):
 
     def _clone_impl(self):
         return reference_t(self.base.clone())
-
-
-class elaborated_t(compound_t):
-
-    """represents `elaborated` type"""
-
-    def __init__(self, base):
-        compound_t.__init__(self, base)
-
-    def build_decl_string(self, with_defaults=True):
-        if hasattr(self.base.declaration, "elaborated_type_specifier"):
-            prefix = self.base.declaration.elaborated_type_specifier + " "
-        else:
-            prefix = ""
-        return prefix + self.base.build_decl_string(with_defaults)
-
-    def _clone_impl(self):
-        return elaborated_t(self.base.clone())
 
 
 class array_t(compound_t):
@@ -625,6 +615,8 @@ class array_t(compound_t):
         self._size = size
 
     def build_decl_string(self, with_defaults=True):
+        # return self.base.build_decl_string(with_defaults) + '[%d]' %
+        # self.size
         return self.__bds_for_multi_dim_arrays(None, with_defaults)
 
     def __bds_for_multi_dim_arrays(self, parent_dims=None, with_defaults=True):
@@ -641,8 +633,7 @@ class array_t(compound_t):
             tmp = []
             for s in parent_dims:
                 tmp.append('[%d]' % s)
-            return \
-                self.base.build_decl_string(with_defaults) + " " + "".join(tmp)
+            return self.base.build_decl_string(with_defaults) + ''.join(tmp)
 
     def _clone_impl(self):
         return array_t(self.base.clone(), self.size)
@@ -807,6 +798,13 @@ class member_function_type_t(type_t, calldef_type_t):
                 [_f(x, with_defaults) for x in self.arguments_types]),
             'has_const': has_const_str}
 
+    def create(self):
+        return self.build_decl_string(
+            self.return_type,
+            self.class_inst.decl_string,
+            self.arguments_types,
+            self.has_const)
+
     @staticmethod
     def create_decl_string(
             return_type,
@@ -879,17 +877,14 @@ class member_variable_type_t(compound_t):
 ##########################################################################
 # declarated types:
 
-class declarated_t(type_t, byte_info.byte_info):
+class declarated_t(type_t):
 
     """class that binds between to hierarchies: :class:`type_t`
     and :class:`declaration_t`"""
 
     def __init__(self, declaration):
         type_t.__init__(self)
-        byte_info.byte_info.__init__(self)
         self._declaration = declaration
-        self.byte_size = self._declaration.byte_size
-        self.byte_align = self._declaration.byte_align
 
     @property
     def declaration(self):
@@ -899,8 +894,6 @@ class declarated_t(type_t, byte_info.byte_info):
     @declaration.setter
     def declaration(self, new_declaration):
         self._declaration = new_declaration
-        self.byte_size = self._declaration.byte_size
-        self.byte_align = self._declaration.byte_align
 
     def build_decl_string(self, with_defaults=True):
         if with_defaults:
@@ -911,25 +904,33 @@ class declarated_t(type_t, byte_info.byte_info):
     def _clone_impl(self):
         return declarated_t(self._declaration)
 
+    @property
+    def byte_size(self):
+        """Size of this type in bytes @type: int"""
+        return self._declaration.byte_size
+
+    @property
+    def byte_align(self):
+        """alignment of this type in bytes @type: int"""
+        return self._declaration.byte_align
+
 
 class type_qualifiers_t(object):
 
     """contains additional information about type: mutable, static, extern"""
 
-    def __init__(self, has_static=False, has_mutable=False, has_extern=False):
+    def __init__(self, has_static=False, has_mutable=False):
         self._has_static = has_static
-        self._has_extern = has_extern
         self._has_mutable = has_mutable
 
     def __eq__(self, other):
         if not isinstance(other, type_qualifiers_t):
             return False
         return self.has_static == other.has_static \
-            and self.has_extern == other.has_extern \
             and self.has_mutable == other.has_mutable
 
     def __hash__(self):
-        return super(type_qualifiers_t, self).__hash__()
+        return super.__hash__(self)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -938,7 +939,6 @@ class type_qualifiers_t(object):
         if not isinstance(other, type_qualifiers_t):
             return object.__lt__(self, other)
         return self.has_static < other.has_static \
-            and self.has_extern < other.has_extern \
             and self.has_mutable < other.has_mutable
 
     @property
@@ -951,11 +951,12 @@ class type_qualifiers_t(object):
 
     @property
     def has_extern(self):
-        return self._has_extern
+        """synonym to static"""
+        return self.has_static
 
     @has_extern.setter
     def has_extern(self, has_extern):
-        self._has_extern = has_extern
+        self.has_static = has_extern
 
     @property
     def has_mutable(self):

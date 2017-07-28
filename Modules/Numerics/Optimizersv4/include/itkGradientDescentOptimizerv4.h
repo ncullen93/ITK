@@ -219,7 +219,7 @@ protected:
   TInternalComputationValueType m_MinimumConvergenceValue;
   TInternalComputationValueType m_ConvergenceValue;
 
-  /** Store the best value and related parameters. */
+  /** Store the best value and related paramters. */
   MeasureType                   m_CurrentBestValue;
   ParametersType                m_BestParameters;
 

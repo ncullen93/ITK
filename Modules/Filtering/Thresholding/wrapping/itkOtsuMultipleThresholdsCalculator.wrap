@@ -1,0 +1,5 @@
+itk_wrap_include("itkHistogram.h")
+itk_wrap_class("itk::OtsuMultipleThresholdsCalculator" POINTER_WITH_SUPERCLASS)
+  itk_wrap_template("${ITKM_HD}"  "${ITKT_HD}")
+  itk_wrap_template("${ITKM_HF}"  "${ITKT_HF}")
+itk_end_wrap_class()

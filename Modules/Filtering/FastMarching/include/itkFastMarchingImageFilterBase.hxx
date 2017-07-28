@@ -27,34 +27,32 @@
 
 namespace itk
 {
-
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 class
-FastMarchingImageFilterBase< TInput, TOutput >:: InternalNodeStructure
-{
+FastMarchingImageFilterBase< TInput, TOutput >::
+    InternalNodeStructure
+  {
 public:
-  InternalNodeStructure( ) :
-    m_Value( NumericTraits< OutputPixelType >::max() ), m_Axis( 0 ) {}
+    InternalNodeStructure( ) :
+      m_Value( NumericTraits< OutputPixelType >::max() ), m_Axis( 0 ) {}
 
-  NodeType        m_Node;
-  OutputPixelType m_Value;
-  unsigned int    m_Axis;
+    NodeType        m_Node;
+    OutputPixelType m_Value;
+    unsigned int    m_Axis;
 
-  bool operator< ( const InternalNodeStructure& iRight ) const
-    {
-    return m_Value < iRight.m_Value;
-    }
-};
+    bool operator< ( const InternalNodeStructure& iRight ) const
+      {
+      return m_Value < iRight.m_Value;
+      }
+  };
 
+
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 FastMarchingImageFilterBase< TInput, TOutput >::
-FastMarchingImageFilterBase() :
-  m_OverrideOutputInformation( false ),
-  m_LabelImage( LabelImageType::New() )
-{
-  m_StartIndex.Fill(0);
-  m_LastIndex.Fill(0);
-
+FastMarchingImageFilterBase()
+  {
   OutputSizeType outputSize;
   outputSize.Fill(16);
 
@@ -67,25 +65,31 @@ FastMarchingImageFilterBase() :
   m_OutputOrigin.Fill(0.0);
   m_OutputSpacing.Fill(1.0);
   m_OutputDirection.SetIdentity();
+  m_OverrideOutputInformation = false;
 
   m_InputCache = ITK_NULLPTR;
-}
+  m_LabelImage = LabelImageType::New();
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 FastMarchingImageFilterBase< TInput, TOutput >::
 ~FastMarchingImageFilterBase()
-{
-}
+  {
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
 GenerateOutputInformation()
 {
-  // Copy output information from input image
+  // copy output information from input image
   Superclass::GenerateOutputInformation();
 
-  // Use user-specified output information
+  // use user-specified output information
   if ( !this->GetInput() || m_OverrideOutputInformation )
     {
     OutputImagePointer output = this->GetOutput();
@@ -95,13 +99,17 @@ GenerateOutputInformation()
     output->SetDirection(m_OutputDirection);
     }
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
-EnlargeOutputRequestedRegion( DataObject *output)
+EnlargeOutputRequestedRegion(
+  DataObject *output)
 {
-  // Enlarge the requested region of the output to the whole data set
+  // enlarge the requested region of the output
+  // to the whole data set
   OutputImageType *imgData = dynamic_cast< OutputImageType * >( output );
   if ( imgData )
     {
@@ -116,25 +124,31 @@ EnlargeOutputRequestedRegion( DataObject *output)
                      << typeid( OutputImageType * ).name() );
     }
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 IdentifierType
 FastMarchingImageFilterBase< TInput, TOutput >::
 GetTotalNumberOfNodes() const
-{
-  return this->m_BufferedRegion.GetNumberOfPixels();
-}
+  {
+    return this->m_BufferedRegion.GetNumberOfPixels();
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
 SetOutputValue( OutputImageType* oImage,
                const NodeType& iNode,
                const OutputPixelType& iValue )
-{
+  {
   return oImage->SetPixel( iNode, iValue );
-}
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 const
 typename
@@ -142,31 +156,38 @@ FastMarchingImageFilterBase< TInput, TOutput >::
 OutputPixelType
 FastMarchingImageFilterBase< TInput, TOutput >::
 GetOutputValue( OutputImageType* oImage, const NodeType& iNode ) const
-{
+  {
   return oImage->GetPixel( iNode );
-}
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 unsigned char
 FastMarchingImageFilterBase< TInput, TOutput >::
 GetLabelValueForGivenNode( const NodeType& iNode ) const
-{
+  {
   return m_LabelImage->GetPixel( iNode );
-}
+  }
+// -----------------------------------------------------------------------------
 
+
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
 SetLabelValueForGivenNode( const NodeType& iNode, const LabelType& iLabel )
-{
+  {
   m_LabelImage->SetPixel( iNode, iLabel );
-}
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
 UpdateNeighbors( OutputImageType* oImage, const NodeType& iNode )
-{
+  {
   NodeType neighIndex = iNode;
 
   unsigned char label;
@@ -197,11 +218,13 @@ UpdateNeighbors( OutputImageType* oImage, const NodeType& iNode )
         }
       }
 
-    // Reset neighIndex
+    //reset neighIndex
     neighIndex[j] = v;
     }
-}
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -220,23 +243,25 @@ UpdateValue( OutputImageType* oImage, const NodeType& iNode )
 
     this->SetLabelValueForGivenNode( iNode, Traits::Trial );
 
-    // Insert point into trial heap
+    // insert point into trial heap
     this->m_Heap.push( NodePairType( iNode, outputPixel ) );
     }
-}
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
 GetInternalNodesUsed( OutputImageType* oImage,
                       const NodeType& iNode,
                       InternalNodeStructureArray& ioNodesUsed )
-{
+  {
   NodeType neighbor_node = iNode;
 
   OutputPixelType neighValue;
 
-  // Just to make sure the index is initialized (really cautious)
+  // just to make sure the index is initialized (really cautious)
   InternalNodeStructure temp_node;
   temp_node.m_Node = iNode;
 
@@ -252,12 +277,12 @@ GetInternalNodesUsed( OutputImageType* oImage,
     start = m_StartIndex[j];
     last = m_LastIndex[j];
 
-    // Find smallest valued neighbor in this dimension
+    // find smallest valued neighbor in this dimension
     for ( s = -1; s < 2; s = s + 2 )
       {
       temp = v + s;
 
-      // Make sure neighIndex is not outside from the image
+      // make sure neighIndex is not outside from the image
       if ( ( temp <= last ) && ( temp >= start ) )
         {
         neighbor_node[j] = temp;
@@ -271,20 +296,26 @@ GetInternalNodesUsed( OutputImageType* oImage,
             {
             temp_node.m_Value = neighValue;
             temp_node.m_Node = neighbor_node;
-            }
-          }
-        }
-      }
+            } // if ( temp_node.m_Value > neighValue )
 
-    // Put the minimum neighbor onto the heap
+          } // if ( m_LabelImage->GetPixel( neighbor_node ) == ...
+
+        } //  if ( ( neighbor_node[j] <= m_LastIndex[j] ) && ...
+
+      } // for ( int s = -1; s < 2; s = s + 2 )
+
+    // put the minimum neighbor onto the heap
     temp_node.m_Axis = j;
     ioNodesUsed[j] = temp_node;
 
-    // Reset neighIndex
+    // reset neighIndex
     neighbor_node[j] = v;
-    }
-}
 
+    } // for ( unsigned int j = 0; j < SetDimension; j++ )
+  }
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 double
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -294,7 +325,7 @@ Solve( OutputImageType* oImage,
 {
   (void) oImage;
 
-  // Sort the local list
+  // sort the local list
   std::sort( iNeighbors.Begin(), iNeighbors.End() );
 
   double oSolution = NumericTraits< double >::max();
@@ -356,13 +387,15 @@ Solve( OutputImageType* oImage,
     }
 
   return oSolution;
-}
+  }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
 CheckTopology( OutputImageType* oImage, const NodeType& iNode )
-{
+  {
   if( this->m_TopologyCheck != Superclass::Nothing )
     {
     if( ( ImageDimension == 2 ) || ( ImageDimension == 3 ) )
@@ -379,7 +412,7 @@ CheckTopology( OutputImageType* oImage, const NodeType& iNode )
         oImage->SetPixel( iNode, this->m_TopologyValue );
         this->m_LabelImage->SetPixel( iNode, Traits::Topology );
         return false;
-        }
+        } // if( ( this->m_TopologyCheck == Superclass::Strict ) && ...
 
       if( this->m_TopologyCheck == Superclass::NoHandles )
         {
@@ -391,7 +424,7 @@ CheckTopology( OutputImageType* oImage, const NodeType& iNode )
           }
         if( strictTopologyViolation )
           {
-          // Check for handles
+          // check for handles
           typename NeighborhoodIteratorType::RadiusType radius;
           radius.Fill( 1 );
           NeighborhoodIteratorType ItL( radius, this->m_LabelImage,
@@ -447,27 +480,31 @@ CheckTopology( OutputImageType* oImage, const NodeType& iNode )
               }
             }
           }
-        }
-      }
+
+        } // if( this->m_TopologyCheck == Superclass::NoHandles )
+
+      } // if( ( ImageDimension == 2 ) || ( ImageDimension == 3 ) )
     else
       {
       itkWarningMacro( << "CheckTopology has not be implemented for Dimension != 2 and != 3."
                     << "m_TopologyCheck should be set to Nothing." );
       }
-    }
+    } // if( this->m_TopologyCheck != Superclass::Nothing )
   return true;
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void FastMarchingImageFilterBase< TInput, TOutput >::
 InitializeOutput( OutputImageType* oImage )
-{
-  // Allocate memory for the output buffer
+  {
+  // allocate memory for the output buffer
   oImage->SetBufferedRegion( oImage->GetRequestedRegion() );
   oImage->Allocate();
   oImage->FillBuffer( this->m_LargeValue );
 
-  // Cache some buffered region information
+  // cache some buffered region information
   m_BufferedRegion = oImage->GetBufferedRegion();
   m_StartIndex = m_BufferedRegion.GetIndex();
   m_LastIndex = m_StartIndex + m_BufferedRegion.GetSize();
@@ -493,7 +530,7 @@ InitializeOutput( OutputImageType* oImage )
     m_ConnectedComponentImage->FillBuffer( 0 );
     }
 
-  // Allocate memory for the PointTypeImage
+  // allocate memory for the PointTypeImage
   m_LabelImage->CopyInformation(oImage);
   m_LabelImage->SetBufferedRegion( m_BufferedRegion );
   m_LabelImage->Allocate();
@@ -509,13 +546,13 @@ InitializeOutput( OutputImageType* oImage )
 
     while( pointsIter != pointsEnd )
       {
-      // Get node from alive points container
+      // get node from alive points container
       idx = pointsIter->Value().GetNode();
 
-      // Check if node index is within the output level set
+      // check if node index is within the output level set
       if ( m_BufferedRegion.IsInside( idx ) )
         {
-        // Make this an alive point
+        // make this an alive point
         this->SetLabelValueForGivenNode( idx, Traits::Alive );
 
         if( this->m_TopologyCheck == Superclass::NoHandles )
@@ -542,10 +579,10 @@ InitializeOutput( OutputImageType* oImage )
       {
       idx = pointsIter->Value().GetNode();
 
-      // Check if node index is within the output level set
+      // check if node index is within the output level set
       if ( m_BufferedRegion.IsInside( idx ) )
         {
-        // Make this an alive point
+        // make this an alive point
         this->SetLabelValueForGivenNode( idx, Traits::Forbidden );
         this->SetOutputValue( oImage, idx, zero );
         }
@@ -581,7 +618,7 @@ InitializeOutput( OutputImageType* oImage )
     this->m_ConnectedComponentImage = relabeler->GetOutput();
     }
 
-  // Process the input trial points
+  // process the input trial points
   if ( this->m_TrialPoints )
     {
     NodePairContainerConstIterator pointsIter = this->m_TrialPoints->Begin();
@@ -589,13 +626,13 @@ InitializeOutput( OutputImageType* oImage )
 
     while( pointsIter != pointsEnd )
       {
-      // Get node from trial points container
+      // get node from trial points container
       idx = pointsIter->Value().GetNode();
 
-      // Check if node index is within the output level set
+      // check if node index is within the output level set
       if ( m_BufferedRegion.IsInside( idx ) )
         {
-        // Make this an initial trial point
+        // make this an initial trial point
         this->SetLabelValueForGivenNode( idx, Traits::InitialTrial );
 
         outputPixel = pointsIter->Value().GetValue();
@@ -607,7 +644,7 @@ InitializeOutput( OutputImageType* oImage )
       ++pointsIter;
       }
     }
-  // Initialize indices if this->m_TopologyCheck is activated
+  // initialize indices if this->m_TopologyCheck is activated
   if( this->m_TopologyCheck != Superclass::Nothing )
     {
     if( ImageDimension == 2 )
@@ -628,10 +665,13 @@ InitializeOutput( OutputImageType* oImage )
       }
     }
 
-  // Cache the pointer to the input image
+  // cache the pointer to the input image
   m_InputCache = this->GetInput();
-}
 
+  }
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -649,7 +689,9 @@ DoesVoxelChangeViolateWellComposedness( const NodeType& idx ) const
 
   return !isChangeWellComposed;
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -690,7 +732,9 @@ DoesVoxelChangeViolateStrictTopology( const NodeType& idx ) const
     }
   return false;
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -728,9 +772,10 @@ IsChangeWellComposed2D( const NodeType& idx ) const
       }
     }
 
-  // Check for critical configurations: 2 reflections.
-  // Note that the reflections for the C1 and C2 cases are covered by the
-  // rotation cases above (except in the case of FullInvariance == false).
+  // Check for critical configurations: 2 reflections
+  //  Note that the reflections for the C1 and C2 cases
+  //  are covered by the rotation cases above (except
+  //  in the case of FullInvariance == false.
 
   for ( unsigned int i = 0; i < 2; i++ )
     {
@@ -751,7 +796,9 @@ IsChangeWellComposed2D( const NodeType& idx ) const
     }
   return true;
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -761,7 +808,9 @@ IsCriticalC1Configuration2D( const std::bitset<9>& neighborhood ) const
             neighborhood[3] && !neighborhood[4] &&
            !neighborhood[8] );
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -772,7 +821,9 @@ IsCriticalC2Configuration2D( const std::bitset<9>& neighborhood ) const
             neighborhood[8] &&
            ( neighborhood[5] || neighborhood[7] ) );
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -783,7 +834,9 @@ IsCriticalC3Configuration2D( const std::bitset<9>& neighborhood ) const
            !neighborhood[5] &&  neighborhood[6] &&
            !neighborhood[7] &&  neighborhood[8] );
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -794,7 +847,9 @@ IsCriticalC4Configuration2D( const std::bitset<9>& neighborhood ) const
            !neighborhood[5] && !neighborhood[6] &&
            !neighborhood[7] &&  neighborhood[8] );
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -868,7 +923,9 @@ InitializeIndices2D()
   this->m_ReflectionIndices[1][7] = 7;
   this->m_ReflectionIndices[1][8] = 6;
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -923,7 +980,9 @@ IsChangeWellComposed3D( const NodeType& idx ) const
 
   return true;
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 bool
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -934,7 +993,9 @@ IsCriticalC1Configuration3D( const std::bitset<8>& neighborhood ) const
            ( !neighborhood[0] && !neighborhood[1] &&
               neighborhood[2] &&  neighborhood[3] ) );
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 unsigned int
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -971,7 +1032,9 @@ IsCriticalC2Configuration3D( const std::bitset<8>& neighborhood ) const
 
   return 0;
 }
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
 template< typename TInput, typename TOutput >
 void
 FastMarchingImageFilterBase< TInput, TOutput >::
@@ -1082,36 +1145,6 @@ InitializeIndices3D()
       }
     }
 }
-
-template< typename TInput, typename TOutput >
-void FastMarchingImageFilterBase< TInput, TOutput >::
-PrintSelf( std::ostream & os, Indent indent ) const
-{
-  Superclass::PrintSelf( os, indent );
-
-  os << indent << "BufferedRegion;: " << m_BufferedRegion << std::endl;
-  os << indent << "StartIndex: " << m_StartIndex << std::endl;
-  os << indent << "LastIndex: " << m_LastIndex << std::endl;
-
-  os << indent << "OutputRegion: " << m_OutputRegion << std::endl;
-  os << indent << "OutputOrigin: " << m_OutputOrigin << std::endl;
-  os << indent << "OutputSpacing: " << m_OutputSpacing << std::endl;
-  os << indent << "OutputDirection: " << m_OutputDirection << std::endl;
-
-  os << indent << "OverrideOutputInformation: " << m_OverrideOutputInformation
-    << std::endl;
-
-  itkPrintSelfObjectMacro( LabelImage );
-
-  itkPrintSelfObjectMacro( ConnectedComponentImage );
-
-  os << indent << "RotationIndices: " << m_RotationIndices << std::endl;
-  os << indent << "ReflectionIndices: " << m_ReflectionIndices << std::endl;
-
-  os << indent << "C1Indices: " << m_C1Indices << std::endl;
-  os << indent << "C2Indices: " << m_C2Indices << std::endl;
-
-  itkPrintSelfObjectMacro( InputCache );
+// -----------------------------------------------------------------------------
 }
-} // end namespace itk
 #endif // itkFastMarchingImageFilterBase_hxx

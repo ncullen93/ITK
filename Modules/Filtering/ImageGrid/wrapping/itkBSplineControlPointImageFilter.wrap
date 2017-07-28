@@ -1,0 +1,3 @@
+itk_wrap_class("itk::BSplineControlPointImageFilter" POINTER_WITH_SUPERCLASS)
+  itk_wrap_image_filter("${WRAP_ITK_VECTOR}" "${WRAP_ITK_SCALAR}")
+itk_end_wrap_class()

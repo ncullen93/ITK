@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
@@ -15,10 +15,7 @@ class impl_details(object):
     """implementation details"""
     @staticmethod
     def is_defined_in_xxx(xxx, cls):
-        """
-        Small helper method that checks whether the class `cls` is defined
-        under `::xxx` namespace
-        """
+        """implementation details"""
         if not cls.parent:
             return False
 
@@ -35,7 +32,7 @@ class impl_details(object):
         if not isinstance(xxx_ns.parent, namespace.namespace_t):
             return False
 
-        if xxx_ns.parent.name != '::':
+        if '::' != xxx_ns.parent.name:
             return False
 
         global_ns = xxx_ns.parent
@@ -77,11 +74,12 @@ class impl_details(object):
                     return None
                 else:
                     if isinstance(found, class_declaration.class_types):
-                        return cpptypes.declarated_t(found)
+                        found = cpptypes.declarated_t(found)
                     if has_const:
-                        return cpptypes.const_t(found)
+                        found = cpptypes.const_t(found)
                     if has_pointer:
-                        return cpptypes.pointer_t(found)
+                        found = cpptypes.pointer_t(found)
+                    return found
         if len(found) == 1:
             return found[0]
         else:

@@ -1,13 +1,16 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
 """Parser sub-package.
 """
 
+from .config import gccxml_configuration_t
 from .config import xml_generator_configuration_t
+from .config import load_gccxml_configuration
 from .config import load_xml_generator_configuration
+from .config import gccxml_configuration_example
 
 from .project_reader import COMPILATION_MODE
 from .project_reader import project_reader_t
@@ -48,22 +51,17 @@ def parse(
     if not config:
         config = xml_generator_configuration_t()
     parser = project_reader_t(config=config, cache=cache)
-    declarations = parser.read_files(files, compilation_mode)
-    config.xml_generator_from_xml_file = parser.xml_generator_from_xml_file
-    return declarations
+    answer = parser.read_files(files, compilation_mode)
+    return answer
 
 
 def parse_string(content, config=None):
     if not config:
         config = xml_generator_configuration_t()
     parser = project_reader_t(config)
-    declarations = parser.read_string(content)
-    config.xml_generator_from_xml_file = parser.xml_generator_from_xml_file
-    return declarations
+    return parser.read_string(content)
 
 
 def parse_xml_file(content, config=None):
     parser = source_reader_t(config)
-    decls = parser.read_xml_file(content)
-    config.xml_generator_from_xml_file = parser.xml_generator_from_xml_file
-    return decls
+    return parser.read_xml_file(content)

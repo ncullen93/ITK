@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko, 2006 Allen Bierbaum, Matthias Baas
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko, 2006 Allen Bierbaum, Matthias Baas
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
@@ -16,10 +16,7 @@ from . import decl_visitor
 from . import variable_t
 from . import calldef_t
 from . import type_traits_classes
-
-
-def _stdout_writer(x):
-    sys.stdout.write(x)
+from .. import utils
 
 
 class decl_printer_t(decl_visitor.decl_visitor_t):
@@ -34,7 +31,7 @@ class decl_printer_t(decl_visitor.decl_visitor_t):
             level=0,
             print_details=True,
             recursive=True,
-            writer=_stdout_writer,
+            writer=None,
             verbose=True):
         decl_visitor.decl_visitor_t.__init__(self)
         self.__inst = None
@@ -43,6 +40,8 @@ class decl_printer_t(decl_visitor.decl_visitor_t):
         self.__recursive = recursive
         self.__verbose = verbose
         self.__writer = writer
+        if not self.__writer:
+            self.__writer = lambda x: sys.stdout.write(x)
 
     def clone(self, increment_level=True):
         level = self.__level
@@ -103,17 +102,17 @@ class decl_printer_t(decl_visitor.decl_visitor_t):
     def instance(self, inst):
         self.__inst = inst
 
-    @staticmethod
-    def is_builtin_decl(decl):
+    def is_builtin_decl(self, decl):
         if not decl.name.startswith('__builtin_'):
             return False
-        # FIXME: This won't probably not work with CastXML.
-        # It either needs to be removed or improved
-        return decl.location and decl.location.file_name \
-            and decl.location.file_name.endswith('gccxml_builtins.h')
+        if decl.location \
+           and decl.location.file_name \
+           and decl.location.file_name.endswith('gccxml_builtins.h'):
+            return True
+        else:
+            return False
 
-    @staticmethod
-    def __nice_decl_name(inst):
+    def __nice_decl_name(self, inst):
         name = inst.__class__.__name__
         return name
         # if name.endswith( '_t' ):
@@ -156,7 +155,7 @@ class decl_printer_t(decl_visitor.decl_visitor_t):
                         curr_level *
                         self.INDENT_SIZE +
                         attributes)
-                if self.__inst.demangled:
+                if "GCC" in utils.xml_generator and self.__inst.demangled:
                     # Working only with gccxml.
                     # No demangled attribute with castxml
                     demangled = 'demangled: %s' % self.__inst.demangled
@@ -169,10 +168,13 @@ class decl_printer_t(decl_visitor.decl_visitor_t):
                 # Mangled name is only available for functions and variables
                 # when using castxml.
                 print_mangled = False
-                if self.__inst.mangled and \
-                    (isinstance(self.__inst, variable_t) or
-                     isinstance(self.__inst, calldef_t)):
+                if "GCC" in utils.xml_generator and self.__inst.mangled:
                     print_mangled = True
+                elif "CastXML" in utils.xml_generator and \
+                    (isinstance(self.__inst, variable_t) or
+                        isinstance(self.__inst, calldef_t)) and \
+                        self.__inst.mangled:
+                            print_mangled = True
 
                 if print_mangled:
                     mangled = 'mangled: %s' % self.__inst.mangled
@@ -181,6 +183,15 @@ class decl_printer_t(decl_visitor.decl_visitor_t):
                         curr_level *
                         self.INDENT_SIZE +
                         mangled)
+
+                if self.__inst.decorated_name:
+                    decorated_name = 'decorated name: %s' % (
+                        self.__inst.decorated_name)
+                    self.writer(
+                        ' ' *
+                        curr_level *
+                        self.INDENT_SIZE +
+                        decorated_name)
 
     def print_calldef_info(self, decl=None):
         if None is decl:

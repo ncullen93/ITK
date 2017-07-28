@@ -196,9 +196,11 @@ if [[ -z "$snapshot_old_sha" ]]; then
     git commit
 "
 else
-    cd "$toplevel_path" &&
+    echo "Merge with commands:
+
+    cd \"$toplevel_path\" &&
     git merge -X subtree=$module_relative_path/$snapshot_relative_path $snapshot_branch_name
-    git branch -d "$snapshot_branch_name"
+"
 fi
 
 }

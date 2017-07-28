@@ -310,8 +310,8 @@ BSplineControlPointImageFilter<TInputImage, TOutputImage>
 
   for( It.GoToBegin(); !It.IsAtEnd(); ++It )
     {
-    PointDataType data;
-    data.Fill( 0.0 );
+    PointDataType data(0.0);
+    //data.Fill( 0.0 );
     typename PointDataImageType::IndexType idx = It.GetIndex();
     for( unsigned int i = 0; i < this->m_SplineOrder[dimension] + 1; i++ )
       {
@@ -461,8 +461,8 @@ BSplineControlPointImageFilter<TInputPointImage, TOutputImage>
       ControlPointLatticeType::New();
     refinedLattice->SetRegions( size );
     refinedLattice->Allocate();
-    PixelType data;
-    data.Fill( 0.0 );
+    PixelType data(0.0);
+    //data.Fill( 0.0 );
     refinedLattice->FillBuffer( data );
 
     typename ControlPointLatticeType::IndexType            idx;

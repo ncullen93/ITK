@@ -3,10 +3,11 @@ set(DOCUMENTATION "This modules contains an ImageIO class to read or write the
 
 itk_module(ITKIONIFTI
   ENABLE_SHARED
+  DEPENDS
+    ITKNIFTI
   PRIVATE_DEPENDS
     ITKIOImageBase
     ITKTransform
-    ITKNIFTI
   TEST_DEPENDS
     ITKTestKernel
     ITKNIFTI

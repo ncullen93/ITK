@@ -419,7 +419,7 @@ void BSplineResampleImageFilterBase< TInputImage, TOutputImage >
     OutputImageIterator outIterator(scratchImage, validRegion);
     if ( n == ( ImageDimension - 1 ) )
       {
-      // Last time through the loop write directly to the output
+      // Last time through the loop write directly to the ouput
       outIterator = outItr;
       }
 
@@ -538,7 +538,7 @@ void BSplineResampleImageFilterBase< TInputImage, TOutputImage >
     OutputImageIterator outIterator(scratchImage, validRegion);
     if ( n == ( ImageDimension - 1 ) )
       {
-      // Last time through the loop write directly to the output
+      // Last time through the loop write directly to the ouput
       outIterator = outItr;
       }
 

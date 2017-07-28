@@ -1,5 +1,5 @@
-# Copyright 2014-2017 Insight Software Consortium.
-# Copyright 2004-2009 Roman Yakovenko.
+# Copyright 2014-2016 Insight Software Consortium.
+# Copyright 2004-2008 Roman Yakovenko.
 # Distributed under the Boost Software License, Version 1.0.
 # See http://www.boost.org/LICENSE_1_0.txt
 
@@ -15,36 +15,12 @@ from . import cpptypes
 from .. import utils
 
 
-def is_union(declaration):
-    """
-    Returns True if declaration represents a C++ union
-
-    Args:
-        declaration (declaration_t): the declaration to be checked.
-
-    Returns:
-        bool: True if declaration represents a C++ union
-    """
-    if not is_class(declaration):
+def is_union(type_):
+    """returns True if type represents a C++ union"""
+    if not is_class(type_):
         return False
-    decl = class_traits.get_declaration(declaration)
+    decl = class_traits.get_declaration(type_)
     return decl.class_type == class_declaration.CLASS_TYPES.UNION
-
-
-def is_struct(declaration):
-    """
-    Returns True if declaration represents a C++ struct
-
-    Args:
-        declaration (declaration_t): the declaration to be checked.
-
-    Returns:
-        bool: True if declaration represents a C++ struct
-    """
-    if not is_class(declaration):
-        return False
-    decl = class_traits.get_declaration(declaration)
-    return decl.class_type == class_declaration.CLASS_TYPES.STRUCT
 
 
 class declaration_xxx_traits(object):
@@ -55,18 +31,18 @@ class declaration_xxx_traits(object):
         - find out whether a declaration is a desired one
         - get reference to the declaration
     """
+    sequence = [
+        type_traits.remove_alias,
+        type_traits.remove_cv,
+        type_traits.remove_declarated]
 
     def __init__(self, declaration_class):
         self.declaration_class = declaration_class
 
-    @staticmethod
-    def __apply_sequence(type_):
-        return \
-            type_traits.remove_declarated(
-                type_traits.remove_elaborated(
-                    type_traits.remove_cv(
-                        type_traits.remove_alias(
-                            type_traits.remove_pointer(type_)))))
+    def __apply_sequence(self, type_):
+        for f in self.sequence:
+            type_ = f(type_)
+        return type_
 
     def is_my_case(self, type_):
         """returns True, if type represents the desired declaration,
@@ -81,7 +57,6 @@ class declaration_xxx_traits(object):
         Precondition: self.is_my_case( type ) == True
         """
         return self.__apply_sequence(type_)
-
 
 enum_traits = declaration_xxx_traits(enumeration.enumeration_t)
 """implements functionality, needed for convenient work with C++ enums"""
@@ -152,24 +127,18 @@ def find_copy_constructor(type_):
         return None
 
 
-def find_noncopyable_vars(type_, already_visited_cls_vars=None):
+def find_noncopyable_vars(type_):
     """
     Returns list of all `noncopyable` variables.
 
-    If an already_visited_cls_vars list is provided as argument, the returned
-    list will not contain these variables. This list will be extended with
-    whatever variables pointing to classes have been found.
-
     Args:
         type_ (declarations.class_t): the class to be searched.
-        already_visited_cls_vars (list): optional list of vars that should not
-            be checked a second time, to prevent infinite recursions.
 
     Returns:
         list: list of all `noncopyable` variables.
 
     """
-    assert isinstance(type_, class_declaration.class_t)
+    assert(isinstance(type_, class_declaration.class_t))
 
     logger = utils.loggers.cxx_parser
     mvars = type_.variables(
@@ -177,9 +146,6 @@ def find_noncopyable_vars(type_, already_visited_cls_vars=None):
         recursive=False,
         allow_empty=True)
     noncopyable_vars = []
-
-    if already_visited_cls_vars is None:
-        already_visited_cls_vars = []
 
     message = (
         "__contains_noncopyable_mem_var - %s - TRUE - " +
@@ -192,35 +158,27 @@ def find_noncopyable_vars(type_, already_visited_cls_vars=None):
         if type_traits.is_const(type_):
             no_const = type_traits.remove_const(type_)
             if type_traits.is_fundamental(no_const) or is_enum(no_const):
-                logger.debug(
-                    (message + "- fundamental or enum"),
-                    type_.decl_string)
+                logger.debug((message + "- fundamental or enum")
+                             % type_.decl_string)
                 noncopyable_vars.append(mvar)
             if is_class(no_const):
-                logger.debug((message + " - class"), type_.decl_string)
+                logger.debug((message + " - class") % type_.decl_string)
                 noncopyable_vars.append(mvar)
             if type_traits.is_array(no_const):
-                logger.debug((message + " - array"), type_.decl_string)
+                logger.debug((message + " - array") % type_.decl_string)
                 noncopyable_vars.append(mvar)
 
         if class_traits.is_my_case(type_):
 
             cls = class_traits.get_declaration(type_)
-
-            # Exclude classes that have already been visited.
-            if cls in already_visited_cls_vars:
-                continue
-            already_visited_cls_vars.append(cls)
-
-            if is_noncopyable(cls, already_visited_cls_vars):
-                logger.debug(
-                    (message + " - class that is not copyable"),
-                    type_.decl_string)
+            if is_noncopyable(cls):
+                logger.debug((message + " - class that is not copyable")
+                             % type_.decl_string)
                 noncopyable_vars.append(mvar)
 
-    logger.debug((
-        "__contains_noncopyable_mem_var - %s - FALSE - doesn't " +
-        "contain noncopyable members"), type_.decl_string)
+    logger.debug(
+        ("__contains_noncopyable_mem_var - %s - FALSE - doesn't " +
+            "contain noncopyable members") % type_.decl_string)
 
     return noncopyable_vars
 
@@ -270,24 +228,24 @@ def has_public_constructor(class_):
 def has_public_assign(class_):
     """returns True, if class has public assign operator, False otherwise"""
     class_ = class_traits.get_declaration(class_)
-    decls = class_.member_operators(
+    decls = class_.mem_opers(
         lambda o: o.symbol == '=' and o.access_type == 'public',
         recursive=False,
         allow_empty=True)
     return bool(decls)
 
 
-def has_public_destructor(decl_type):
+def has_public_destructor(type):
     """returns True, if class has public destructor, False otherwise"""
-    d = has_destructor(decl_type)
+    d = has_destructor(type)
     return d and d.access_type == 'public'
 
 
-def has_vtable(decl_type):
+def has_vtable(type_):
     """True, if class has virtual table, False otherwise"""
-    assert isinstance(decl_type, class_declaration.class_t)
+    assert(isinstance(type_, class_declaration.class_t))
     return bool(
-        decl_type.calldefs(
+        type_.calldefs(
             lambda f: isinstance(f, calldef_members.member_function_t) and
             f.virtuality != calldef_types.VIRTUALITY_TYPES.NOT_VIRTUAL,
             recursive=False,
@@ -312,10 +270,10 @@ def is_base_and_derived(based, derived):
     return False
 
 
-def has_any_non_copyconstructor(decl_type):
+def has_any_non_copyconstructor(type):
     """if class has any public constructor, which is not copy constructor,
     this function will return list of them, otherwise None"""
-    class_ = class_traits.get_declaration(decl_type)
+    class_ = class_traits.get_declaration(type)
     decls = class_.constructors(
         lambda c: not is_copy_constructor(c) and c.access_type == 'public',
         recursive=False,
@@ -332,8 +290,7 @@ class __is_convertible_t(object):
         self.__source = self.__normalize(source)
         self.__target = self.__normalize(target)
 
-    @staticmethod
-    def __find_class_by_class_declaration(class_decl):
+    def __find_class_by_class_declaration(self, class_decl):
         found = scopedef.find_declaration(
             class_decl.parent.declarations,
             name=class_decl.name,
@@ -352,50 +309,49 @@ class __is_convertible_t(object):
                 bt_of_type.declaration)
         return type_
 
-    @staticmethod
-    def __test_trivial(src, target):
-        if not (src and target):
+    def __test_trivial(self, source, target):
+        if not (source and target):
             return False
-        if type_traits.is_same(src, target):
+        if type_traits.is_same(source, target):
             return True  # X => X
         if type_traits.is_const(target) and type_traits.is_same(
-                src, target.base):
+                source, target.base):
             return True  # X => const X
         if type_traits.is_reference(target) and type_traits.is_same(
-                src, target.base):
+                source, target.base):
             return True  # X => X&
         if type_traits.is_reference(target) and type_traits.is_const(
-                target.base) and type_traits.is_same(src, target.base.base):
+                target.base) and type_traits.is_same(source, target.base.base):
             return True  # X => const X&
         if type_traits.is_same(target, cpptypes.pointer_t(cpptypes.void_t())):
-            if type_traits.is_integral(src) or is_enum(src):
+            if type_traits.is_integral(source) or is_enum(source):
                 return False
             else:
                 return True  # X => void*
-        if type_traits.is_pointer(src) and \
-            type_traits.is_pointer(target) and \
-            type_traits.is_const(target.base) and \
-                type_traits.is_same(src.base, target.base.base):
-            return True  # X* => const X*
-        if type_traits.is_reference(src) and \
-            type_traits.is_reference(target) and \
-            type_traits.is_const(target.base) and \
-                type_traits.is_same(src.base, target.base.base):
-            return True  # X& => const X&
-        if not type_traits.is_const(src) and \
-            type_traits.is_array(src) and \
-            type_traits.is_pointer(target) and \
-                type_traits.is_same(type_traits.base_type(src), target.base):
-            return True  # X[2] => X*
-        if type_traits.is_array(src) and \
-            type_traits.is_pointer(target) and \
-            type_traits.is_const(target.base) and \
-            type_traits.is_same(
-                    type_traits.base_type(src), target.base.base):
-            return True
+        if type_traits.is_pointer(source) and \
+                type_traits.is_pointer(target) and \
+                type_traits.is_const(target.base) and \
+                type_traits.is_same(source.base, target.base.base):
+                return True  # X* => const X*
+        if type_traits.is_reference(source) and \
+                type_traits.is_reference(target) and \
+                type_traits.is_const(target.base) and \
+                type_traits.is_same(source.base, target.base.base):
+                return True  # X& => const X&
+        if not type_traits.is_const(source) and \
+                type_traits.is_array(source) and \
+                type_traits.is_pointer(target) and \
+                type_traits.is_same(
+                    type_traits.base_type(source), target.base):
+                return True  # X[2] => X*
+        if type_traits.is_array(source) and \
+                type_traits.is_pointer(target) and \
+                type_traits.is_const(target.base) and \
+                type_traits.is_same(
+                    type_traits.base_type(source), target.base.base):
+                return True
 
-    @staticmethod
-    def __test_pointer_to_func_or_mv__to__func_or_mv(source, target):
+    def __test_pointer_to_func_or_mv__to__func_or_mv(self, source, target):
         if type_traits.is_pointer(source) \
            and type_traits.is_reference(target) \
            and isinstance(target.base,
@@ -430,8 +386,7 @@ class __is_convertible_t(object):
            and type_traits.is_same(target.base, source):
             return True
 
-    @staticmethod
-    def __test_const_x_ref__to__x(source, target):
+    def __test_const_x_ref__to__x(self, source, target):
         if not type_traits.is_reference(source) \
            or not type_traits.is_const(source.base) \
            or not type_traits.is_same(source.base.base, target):
@@ -446,8 +401,7 @@ class __is_convertible_t(object):
                 return True  # we have copy constructor
         return False
 
-    @staticmethod
-    def __test_const_ref_x__to__y(source, target):
+    def __test_const_ref_x__to__y(self, source, target):
         if not type_traits.is_reference(source) or not \
                 type_traits.is_const(source.base):
             return False
@@ -463,8 +417,7 @@ class __is_convertible_t(object):
                 return True  # we have copy constructor
         return False
 
-    @staticmethod
-    def __test_ref_x__to__x(source, target):
+    def __test_ref_x__to__x(self, source, target):
         if not type_traits.is_reference(source) or not \
                 type_traits.is_same(source.base, target):
             return False
@@ -478,8 +431,7 @@ class __is_convertible_t(object):
                 return True  # we have copy constructor
         return False
 
-    @staticmethod
-    def __test_ref_x__to__y(source, target):
+    def __test_ref_x__to__y(self, source, target):
         if not type_traits.is_reference(source):
             return False
         if type_traits.is_fundamental(source.base) and \
@@ -493,8 +445,7 @@ class __is_convertible_t(object):
                 return True  # we have copy constructor
         return False
 
-    @staticmethod
-    def __test_fundamental__to__fundamental(source, target):
+    def __test_fundamental__to__fundamental(self, source, target):
         if not type_traits.is_fundamental(
                 type_traits.base_type(source)) or not \
                 type_traits.is_fundamental(
@@ -520,8 +471,7 @@ class __is_convertible_t(object):
             return True  # X => const Y&
         return False
 
-    @staticmethod
-    def _is_both_declarated(x, y):
+    def _is_both_declarated(self, x, y):
         return (
             isinstance(x, cpptypes.declarated_t) and
             isinstance(y, cpptypes.declarated_t))
@@ -636,18 +586,18 @@ class __is_convertible_t(object):
         # is has constructor from source
         if isinstance(target, cpptypes.declarated_t) and \
                 isinstance(target.declaration, class_declaration.class_t):
-            constructors = scopedef.find_all_declarations(
-                target.declaration.declarations,
-                decl_type=calldef_members.constructor_t,
-                recursive=False)
-            if constructors:
-                for constructor in constructors:
-                    if len(constructor.arguments) != 1:
-                        continue
-                    # TODO: add test to check explicitness
-                    if is_convertible(source,
-                                      constructor.arguments[0].decl_type):
-                        return True
+                constructors = scopedef.find_all_declarations(
+                    target.declaration.declarations,
+                    decl_type=calldef_members.constructor_t,
+                    recursive=False)
+                if constructors:
+                    for constructor in constructors:
+                        if 1 != len(constructor.arguments):
+                            continue
+                        # TODO: add test to check explicitness
+                        if is_convertible(source,
+                                          constructor.arguments[0].decl_type):
+                            return True
 
         return False
 
@@ -657,20 +607,8 @@ def is_convertible(source, target):
     return __is_convertible_t(source, target).is_convertible()
 
 
-def __is_noncopyable_single(class_, already_visited_cls_vars=None):
-    """
-    Implementation detail.
-
-    Checks if the class is non copyable, without considering the base classes.
-
-    Args:
-        class_ (declarations.class_t): the class to be checked
-        already_visited_cls_vars (list): optional list of vars that should not
-            be checked a second time, to prevent infinite recursions.
-
-    Returns:
-        bool: if the class is non copyable
-    """
+def __is_noncopyable_single(class_):
+    """implementation details"""
     # It is not enough to check base classes, we should also to check
     # member variables.
     logger = utils.loggers.cxx_parser
@@ -687,38 +625,21 @@ def __is_noncopyable_single(class_, already_visited_cls_vars=None):
             "    public destructor: yes"])
         logger.debug(msg)
         return False
-
-    if already_visited_cls_vars is None:
-        already_visited_cls_vars = []
-
-    if find_noncopyable_vars(class_, already_visited_cls_vars):
+    if find_noncopyable_vars(class_):
         logger.debug(
             ("__is_noncopyable_single(TRUE) - %s - contains noncopyable " +
-             "members"), class_.decl_string)
+             "members") % class_.decl_string)
         return True
     else:
         logger.debug((
             "__is_noncopyable_single(FALSE) - %s - COPYABLE, because is " +
-            "doesn't contains noncopyable members"), class_.decl_string)
+            "doesn't contains noncopyable members") % class_.decl_string)
         return False
 
 
-def is_noncopyable(class_, already_visited_cls_vars=None):
-    """
-    Checks if class is non copyable
-
-    Args:
-        class_ (declarations.class_t): the class to be checked
-        already_visited_cls_vars (list): optional list of vars that should not
-            be checked a second time, to prevent infinite recursions.
-            In general you can ignore this argument, it is mainly used during
-            recursive calls of is_noncopyable() done by pygccxml.
-
-    Returns:
-        bool: if the class is non copyable
-    """
+def is_noncopyable(class_):
+    """returns True, if class is noncopyable, False otherwise"""
     logger = utils.loggers.cxx_parser
-
     class_decl = class_traits.get_declaration(class_)
 
     true_header = "is_noncopyable(TRUE) - %s - " % class_.decl_string
@@ -737,9 +658,6 @@ def is_noncopyable(class_, already_visited_cls_vars=None):
     if copy_ and copy_.access_type == 'public' and not copy_.is_artificial:
         return False
 
-    if already_visited_cls_vars is None:
-        already_visited_cls_vars = []
-
     for base_desc in class_decl.recursive_bases:
         assert isinstance(base_desc, class_declaration.hierarchy_info_t)
 
@@ -757,15 +675,13 @@ def is_noncopyable(class_, already_visited_cls_vars=None):
                     true_header +
                     "there is private copy constructor")
                 return True
-            elif __is_noncopyable_single(
-                    base_desc.related_class, already_visited_cls_vars):
+            elif __is_noncopyable_single(base_desc.related_class):
                 logger.debug(
                     true_header +
                     "__is_noncopyable_single returned True")
                 return True
 
-        if __is_noncopyable_single(
-                base_desc.related_class, already_visited_cls_vars):
+        if __is_noncopyable_single(base_desc.related_class):
             logger.debug(
                 true_header +
                 "__is_noncopyable_single returned True")
@@ -781,7 +697,7 @@ def is_noncopyable(class_, already_visited_cls_vars=None):
         logger.debug(true_header + "has private destructor")
         return True
     else:
-        return __is_noncopyable_single(class_decl, already_visited_cls_vars)
+        return __is_noncopyable_single(class_decl)
 
 
 def is_unary_operator(oper):
@@ -799,7 +715,7 @@ def is_unary_operator(oper):
     if oper.symbol not in symbols:
         return False
     if isinstance(oper, calldef_members.member_operator_t):
-        if len(oper.arguments) == 0:
+        if 0 == len(oper.arguments):
             return True
         elif oper.symbol in ['++', '--'] and \
                 isinstance(oper.arguments[0].decl_type, cpptypes.int_t):
@@ -807,10 +723,10 @@ def is_unary_operator(oper):
         else:
             return False
     else:
-        if len(oper.arguments) == 1:
+        if 1 == len(oper.arguments):
             return True
         elif oper.symbol in ['++', '--'] \
-                and len(oper.arguments) == 2 \
+                and 2 == len(oper.arguments) \
                 and isinstance(oper.arguments[1].decl_type, cpptypes.int_t):
             # may be I need to add additional check whether first argument is
             # reference or not?
@@ -835,12 +751,12 @@ def is_binary_operator(oper):
     if oper.symbol not in symbols:
         return False
     if isinstance(oper, calldef_members.member_operator_t):
-        if len(oper.arguments) == 1:
+        if 1 == len(oper.arguments):
             return True
         else:
             return False
     else:
-        if len(oper.arguments) == 2:
+        if 2 == len(oper.arguments):
             return True
         else:
             return False
@@ -858,7 +774,7 @@ def is_copy_constructor(constructor):
         bool: True if this is a copy constructor, False instead.
 
     """
-    assert isinstance(constructor, calldef_members.constructor_t)
+    assert (isinstance(constructor, calldef_members.constructor_t))
     args = constructor.arguments
     parent = constructor.parent
 
@@ -914,5 +830,5 @@ def is_trivial_constructor(constructor):
         bool: True if this is a trivial constructor, False instead.
 
     """
-    assert isinstance(constructor, calldef_members.constructor_t)
+    assert (isinstance(constructor, calldef_members.constructor_t))
     return not bool(constructor.arguments)

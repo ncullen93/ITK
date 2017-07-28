@@ -41,7 +41,7 @@ set(ITK_WRAP_complex_float @ITK_WRAP_complex_float@ CACHE BOOL "Wrap complex<flo
 set(ITK_WRAP_complex_double @ITK_WRAP_complex_double@ CACHE BOOL "Wrap complex<double> type")
 set(ITK_WRAP_IMAGE_DIMS "@ITK_WRAP_IMAGE_DIMS@" CACHE STRING "dimensions available separated by semicolons (;)")
 
-@CONFIG_WRAP_ITK_MORE_OPTIONS@
+
 
 foreach(var ITK_DIR GCCXML
     ITK_WRAP_unsigned_char ITK_WRAP_unsigned_short ITK_WRAP_unsigned_long ITK_WRAP_signed_char

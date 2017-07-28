@@ -192,12 +192,14 @@ ExpandImageFilter< TInputImage, TOutputImage >
   Superclass::GenerateInputRequestedRegion();
 
   // Get pointers to the input and output
-  InputImageType * inputPtr =
-    const_cast< InputImageType * >( this->GetInput() );
-  const OutputImageType * outputPtr = this->GetOutput();
+  InputImagePointer inputPtr =
+    const_cast< TInputImage * >( this->GetInput() );
+  OutputImagePointer outputPtr = this->GetOutput();
 
-  itkAssertInDebugAndIgnoreInReleaseMacro( inputPtr != ITK_NULLPTR );
-  itkAssertInDebugAndIgnoreInReleaseMacro( outputPtr );
+  if ( !inputPtr || !outputPtr )
+    {
+    return;
+    }
 
   // We need to compute the input requested region (size and start index)
   unsigned int i;
@@ -247,11 +249,14 @@ ExpandImageFilter< TInputImage, TOutputImage >
   Superclass::GenerateOutputInformation();
 
   // Get pointers to the input and output
-  const InputImageType * inputPtr = this->GetInput();
-  OutputImageType * outputPtr = this->GetOutput();
+  InputImagePointer inputPtr =
+    const_cast< TInputImage * >( this->GetInput() );
+  OutputImagePointer outputPtr = this->GetOutput();
 
-  itkAssertInDebugAndIgnoreInReleaseMacro( inputPtr );
-  itkAssertInDebugAndIgnoreInReleaseMacro( outputPtr != ITK_NULLPTR );
+  if ( !inputPtr || !outputPtr )
+    {
+    return;
+    }
 
   // We need to compute the output spacing, the output image size, and the
   // output image start index

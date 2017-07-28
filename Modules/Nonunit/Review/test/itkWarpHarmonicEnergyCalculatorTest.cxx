@@ -18,44 +18,35 @@
 
 #include "itkWarpHarmonicEnergyCalculator.h"
 #include "itkImageRegionIteratorWithIndex.h"
-#include "itkMath.h"
-#include "itkTestingMacros.h"
 
 
-int itkWarpHarmonicEnergyCalculatorTest( int argc, char* argv[] )
+int itkWarpHarmonicEnergyCalculatorTest(int, char* [] )
 {
-  if( argc != 4 )
-    {
-      std::cerr << "Missing parameters." << std::endl;
-      std::cerr << "Usage: " << argv[0]
-        << " useImageSpacing"
-        << " derivativeWeights"
-        << " expectedEnergy" << std::endl;
-      return EXIT_FAILURE;
-    }
 
   // Define the dimension of the images
   const unsigned int ImageDimension = 3;
 
-  typedef itk::Vector< double, ImageDimension > DeformationPixelType;
+  typedef itk::Vector< double, ImageDimension >   DeformationPixelType;
 
   // Declare the types of the images
-  typedef itk::Image< DeformationPixelType, ImageDimension > DisplacementFieldType;
+  typedef itk::Image<DeformationPixelType, ImageDimension>  DisplacementFieldType;
+
+  // Declare Iterator types apropriated for each image
+  typedef itk::ImageRegionIteratorWithIndex< DisplacementFieldType >  DeformationIteratorType;
 
   // Declare the type of the index to access images
-  typedef itk::Index< ImageDimension >         IndexType;
+  typedef itk::Index<ImageDimension>         IndexType;
 
   // Declare the type of the size
-  typedef itk::Size< ImageDimension >          SizeType;
+  typedef itk::Size<ImageDimension>          SizeType;
 
-  // Declare the type of the region
-  typedef itk::ImageRegion< ImageDimension >   RegionType;
+  // Declare the type of the Region
+  typedef itk::ImageRegion<ImageDimension>   RegionType;
 
-  // Create the input image
-  DisplacementFieldType ::Pointer inputDisplacementField =
-    DisplacementFieldType ::New();
+  // Create two images
+  DisplacementFieldType ::Pointer inputDisplacementField  = DisplacementFieldType ::New();
 
-  // Define its size, and start index
+  // Define their size, and start index
   SizeType size;
   size[0] = 2;
   size[1] = 2;
@@ -70,55 +61,46 @@ int itkWarpHarmonicEnergyCalculatorTest( int argc, char* argv[] )
   region.SetIndex( start );
   region.SetSize( size );
 
-  // Initialize the input image
+  // Initialize Image A
   inputDisplacementField->SetLargestPossibleRegion( region );
   inputDisplacementField->SetBufferedRegion( region );
   inputDisplacementField->SetRequestedRegion( region );
   inputDisplacementField->Allocate();
 
-  // Initialize the content of the input image
+  // Create one iterator for the Input Image (this is a light object)
+  DeformationIteratorType it( inputDisplacementField,
+                              inputDisplacementField->GetBufferedRegion() );
+
+  // Initialize the content of Image A
   DeformationPixelType vectorValue;
   vectorValue.Fill( 5.0 ); // FIXME: replace with something more interesting...
-  inputDisplacementField->FillBuffer( vectorValue );
 
-  // Declare the type for the itk::WarpHarmonicEnergyCalculator
+  it.GoToBegin();
+  while( !it.IsAtEnd() )
+    {
+    it.Set( vectorValue );
+    std::cout << it.Get() << std::endl;
+    ++it;
+    }
+
+  // Declare the type for the calculator
   typedef itk::WarpHarmonicEnergyCalculator< DisplacementFieldType > CalculatorType;
 
 
-  // Create the calculator
+  // Create one Filter
   CalculatorType::Pointer calculator = CalculatorType::New();
 
-  EXERCISE_BASIC_OBJECT_METHODS( calculator, WarpHarmonicEnergyCalculator,
-    Object );
 
-
-  bool useImageSpacing = static_cast< bool >( atoi( argv[1] ) );
-  TEST_SET_GET_BOOLEAN( calculator, UseImageSpacing, useImageSpacing );
-
-  CalculatorType::WeightsType derivativeWeights;
-  derivativeWeights.Fill( atof( argv[2] ) );
-  calculator->SetDerivativeWeights(derivativeWeights );
-  TEST_SET_GET_VALUE( derivativeWeights, calculator->GetDerivativeWeights() );
-
-  // Set the input image
+  // Connect the input images
   calculator->SetImage( inputDisplacementField );
 
   // Execute the calculator
-  TRY_EXPECT_NO_EXCEPTION( calculator->Compute() );
+  calculator->Compute();
 
-  // Regression test: check the computed harmonic energy
-  double expectedEnergy = atof( argv[3] );
-  const double computedEnergy = calculator->GetHarmonicEnergy();
-  if( itk::Math::NotAlmostEquals( expectedEnergy, computedEnergy ) )
-    {
-    std::cerr << "Test failed!" << std::endl;
-    std::cerr << "Error in GetHarmonicEnergy()" << std::endl;
-    std::cerr << "Expected: " << expectedEnergy
-      << ", but got: " << computedEnergy << std::endl;
-    return EXIT_FAILURE;
-    }
+  const double energy = calculator->GetHarmonicEnergy();
+  std::cout << energy << std::endl;
 
+  if ( std::abs(energy) > 1e-8 )  return EXIT_FAILURE;
 
-  std::cout << "Test finished." << std::endl;
   return EXIT_SUCCESS;
 }

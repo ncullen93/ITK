@@ -23,7 +23,6 @@ itk_module(ITKTestKernel
     ITKDoubleConversion
   TEST_DEPENDS
     ITKImageStatistics
-    ITKGoogleTest
   DESCRIPTION
     "${DOCUMENTATION}"
 )

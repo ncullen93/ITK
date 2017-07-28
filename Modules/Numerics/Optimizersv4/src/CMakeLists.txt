@@ -3,7 +3,6 @@ set(ITKOptimizersv4_SRCS
   itkSingleValuedNonLinearVnlOptimizerv4.cxx
   itkSingleValuedVnlCostFunctionAdaptorv4.cxx
   itkLBFGSOptimizerv4.cxx
-  itkLBFGS2Optimizerv4.cxx
   itkLBFGSBOptimizerv4.cxx
   itkAmoebaOptimizerv4.cxx
   )
